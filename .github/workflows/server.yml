@@ -11,43 +11,23 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Install System Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y wget unzip curl libnsl2
-
-    - name: Fetch Official Playit Engine
-      run: |
-        # Pulls the official, raw execution binary cleanly without docker wrappers
-        curl -L "https://github.com" -o playit
-        chmod +x playit
-
-    - name: Download Stable Bedrock Engine
-      run: |
-        # Download verified stable community-mirrored engine zip
-        wget -q "https://github.com" -O server.zip
-        unzip -q server.zip -d bedrock-server
-        chmod +x bedrock-server/bedrock_server
-        
-        # Configure and accept Mojang terms automatically
-        cd bedrock-server
-        echo "eula=true" > eula.txt
-
-    - name: Force Print Connection Link
+    - name: Run Flawless Simulation Containers
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
-        # Start the network tunnel directly in the background
-        if [ -z "$PLAYIT_SECRET" ]; then
-          echo "LAUNCHING UNLINKED MODE..."
-          ./playit run &
-        else
-          ./playit run --secret "$PLAYIT_SECRET" &
-        fi
+        echo "Initializing isolated virtual environments..."
+        # Launch official Minecraft engine smoothly in the background
+        docker run -d --name minecraft_engine -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server:latest
         
-        # Keep terminal awake for 15 seconds to let the link print out in plain text
+        # Launch the playit agent natively mapped to the runner network
+        docker run -d --name playit_agent --net=host playitcloud/playit:latest run
+        
+        # Give the master network nodes exactly 15 seconds to negotiate a token link
         sleep 15
         
-        # Boot up the Minecraft server cleanly
-        cd bedrock-server
-        LD_LIBRARY_PATH=. ./bedrock_server
+        echo "================================================================="
+        echo "                     YOUR FLAWLESS SETUP LINK:                    "
+        echo "================================================================="
+        # Scrapes the background container stream and prints the text out cleanly
+        docker logs playit_agent 2>&1 | grep -o 'https://playit.gg/claim/[^ ]*' || docker logs playit_agent | tail -n 20
+        echo "================================================================="
