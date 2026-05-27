@@ -11,38 +11,28 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Set Up Node.js Environment
-      uses: actions/setup-node@v4
-      with:
-        node-node-version: '20'
-
-    - name: Install Tools and Playit Directly
+    - name: Download Playit Manually
       run: |
-        sudo apt-get update
-        sudo apt-get install -y wget curl
-        # Install the bedrock server tool globally via npm
-        sudo npm install -g bds-core --unsafe-perm
-        
-        # Pull portable playit agent binary directly
-        curl -SsL -o playit https://github.com
+        # Pulls the correct raw linux binary file from GitHub releases
+        curl -fsSL https://github.com -o playit
         chmod +x playit
 
-    - name: Start Tunnel and Server Together
+    - name: Start Tunnel and Docker Minecraft Server
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
-        # Safely execute the tunnel daemon in background
+        # Start the network tunnel
         if [ -z "$PLAYIT_SECRET" ]; then
           echo "===================================================="
-          echo "NO SECRET DETECTED. CLAIM LINK GENERATING BELOW:"
+          echo "NO PLAYIT SECRET FOUND! LOOK BELOW FOR LINK:"
           echo "===================================================="
           ./playit run &
         else
           ./playit run --secret "$PLAYIT_SECRET" &
         fi
         
-        # Keep background runner steady
+        # Give the network tunnel 5 seconds to initiate
         sleep 5
         
-        # Launch the Bedrock server using bds-core engine launcher
-        bds-core --eula true --version latest
+        # Pull and launch an ultra-stable, isolated Bedrock Server via Docker container
+        docker run -it -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server
