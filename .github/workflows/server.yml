@@ -20,12 +20,12 @@ jobs:
         # 2. Use the open-source web UI container built to instantly expose connection strings
         docker run -d --name playit_tunnel --net=host wisdomsky/playit-docker-web:latest
         
-        # 3. Give the cloud network nodes exactly 15 seconds to negotiate a token link
-        sleep 15
+        # 3. Give the background system 35 seconds to finish the internal package updates completely
+        sleep 35
         
         echo "================================================================="
         echo "                     YOUR FLAWLESS SETUP LINK:                    "
         echo "================================================================="
-        # Dumps the complete raw logs with zero filters so the link is fully visible
-        docker logs playit_tunnel
+        # Reaches inside the running container to pull out the exact login string directly
+        docker exec playit_tunnel playit claim-url || docker logs playit_tunnel | grep -o 'https://playit.gg[^ ]*' || docker logs playit_tunnel | tail -n 20
         echo "================================================================="
