@@ -1,0 +1,43 @@
+name: Custom Bedrock Server
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-server:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Install Network and Zip Tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget unzip curl
+
+    - name: Download and Install Playit.gg
+      run: |
+        curl -SsL https://github.io | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/playit.gpg > /dev/null
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/playit.gpg] https://github.io ./" | sudo tee /etc/apt/sources.list.d/playit-cloud.list
+        sudo apt-get update
+        sudo apt-get install playit -y
+
+    - name: Update FreeDNS Domain Automatically
+      run: |
+        curl -fsSL "https://afraid.org{{ secrets.FREEDNS_TOKEN }}/" || true
+
+    - name: Download Official Minecraft Engine
+      run: |
+        # Pull the absolute newest working file from Mojang's real data center link
+        wget "https://minecraft.azureedge.net/bin-linux/bedrock-server-1.21.0.03.zip" -O server.zip
+        unzip server.zip -d bedrock-server
+        chmod +x bedrock-server/bedrock_server
+
+    - name: Start Tunnel and Server Together
+      env:
+        PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
+      run: |
+        playit --secret "$PLAYIT_SECRET" &
+        cd bedrock-server
+        LD_LIBRARY_PATH=. ./bedrock_server
