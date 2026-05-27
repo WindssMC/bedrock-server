@@ -29,8 +29,8 @@ jobs:
             image: playitcloud/playit:latest
             container_name: playit_tunnel
             network_mode: host
-            environment:
-              SECRET_KEY: "${PLAYIT_SECRET}"
+            # Forces playit to run the setup setup loop directly inside docker logs
+            command: run
             restart: always
         EOF
 
@@ -38,21 +38,12 @@ jobs:
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
-        # Launch the entire system blueprint safely into the cloud background
         docker compose up -d
         
-        # Give the simulated environment 10 seconds to fully warm up and sync
-        sleep 10
+        # Give it 12 seconds to fully handshake with playit's main master servers
+        sleep 12
         
-        # Pull down and print the perfect activation link or server diagnostics
-        if [ -z "$PLAYIT_SECRET" ]; then
-          echo "===================================================="
-          echo "SIMULATION SUCCESSFUL! GRAB YOUR LINK BELOW:"
-          echo "===================================================="
-          docker logs playit_tunnel 2>&1 | grep -o 'https://playit.gg[^ ]*' || docker logs playit_tunnel
-        else
-          echo "===================================================="
-          echo "PERFECTION! YOUR SERVER IS LIVE WITH YOUR SECRET KEY"
-          echo "===================================================="
-          docker logs mc_bedrock
-        fi
+        echo "===================================================="
+        echo "PERFECTION ACCESSED! LOOK BELOW FOR YOUR CLAIM LINK:"
+        echo "===================================================="
+        docker logs playit_tunnel
