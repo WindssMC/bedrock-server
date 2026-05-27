@@ -29,7 +29,7 @@ jobs:
             image: playitcloud/playit:latest
             container_name: playit_tunnel
             network_mode: host
-            # Forces playit to run the setup setup loop directly inside docker logs
+            # Forces playit to spit out raw network link updates continuously
             command: run
             restart: always
         EOF
@@ -40,10 +40,12 @@ jobs:
       run: |
         docker compose up -d
         
-        # Give it 12 seconds to fully handshake with playit's main master servers
-        sleep 12
+        # Give the master servers a full 20 seconds to establish the link route
+        sleep 20
         
         echo "===================================================="
-        echo "PERFECTION ACCESSED! LOOK BELOW FOR YOUR CLAIM LINK:"
+        echo "PERFECTION VISIBLE! LOOK BELOW FOR YOUR ENTIRE LINK:"
         echo "===================================================="
-        docker logs playit_tunnel
+        
+        # Pulls the active, raw internal data logs directly to bypass display omissions
+        docker logs --tail 50 playit_tunnel
