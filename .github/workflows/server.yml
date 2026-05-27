@@ -11,41 +11,43 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Create System Blueprint
+    - name: Install System Dependencies
       run: |
-        cat << 'EOF' > docker-compose.yml
-        version: "3.8"
-        services:
-          minecraft:
-            image: itzg/minecraft-bedrock-server:latest
-            container_name: mc_bedrock
-            environment:
-              EULA: "TRUE"
-            ports:
-              - "19132:19132/udp"
-            restart: always
+        sudo apt-get update
+        sudo apt-get install -y wget unzip curl libnsl2
 
-          tunnel:
-            image: playitcloud/playit:latest
-            container_name: playit_tunnel
-            network_mode: host
-            # Forces playit to spit out raw network link updates continuously
-            command: run
-            restart: always
-        EOF
+    - name: Fetch Official Playit Engine
+      run: |
+        # Pulls the official, raw execution binary cleanly without docker wrappers
+        curl -L "https://github.com" -o playit
+        chmod +x playit
 
-    - name: Launch Blueprint Simulation
+    - name: Download Stable Bedrock Engine
+      run: |
+        # Download verified stable community-mirrored engine zip
+        wget -q "https://github.com" -O server.zip
+        unzip -q server.zip -d bedrock-server
+        chmod +x bedrock-server/bedrock_server
+        
+        # Configure and accept Mojang terms automatically
+        cd bedrock-server
+        echo "eula=true" > eula.txt
+
+    - name: Force Print Connection Link
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
-        docker compose up -d
+        # Start the network tunnel directly in the background
+        if [ -z "$PLAYIT_SECRET" ]; then
+          echo "LAUNCHING UNLINKED MODE..."
+          ./playit run &
+        else
+          ./playit run --secret "$PLAYIT_SECRET" &
+        fi
         
-        # Give the master servers a full 20 seconds to establish the link route
-        sleep 20
+        # Keep terminal awake for 15 seconds to let the link print out in plain text
+        sleep 15
         
-        echo "===================================================="
-        echo "PERFECTION VISIBLE! LOOK BELOW FOR YOUR ENTIRE LINK:"
-        echo "===================================================="
-        
-        # Pulls the active, raw internal data logs directly to bypass display omissions
-        docker logs --tail 50 playit_tunnel
+        # Boot up the Minecraft server cleanly
+        cd bedrock-server
+        LD_LIBRARY_PATH=. ./bedrock_server
