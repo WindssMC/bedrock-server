@@ -15,25 +15,16 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y wget unzip curl
-        # Downloads playit agent binary directly
+        # Downloads portable playit agent directly
         curl -SsL -o playit https://github.com
         chmod +x playit
 
-    - name: Download Minecraft Bedrock Engine
+    - name: Download Minecraft Bedrock Engine via GitHub Mirror
       run: |
-        # Using a verified direct Mojang URL format to bypass script-blocking errors
-        VERSION="1.21.0.03"
-        URL="https://azureedge.net{VERSION}.zip"
+        echo "Pulling verified stable Bedrock Engine..."
+        # Bypasses Mojang's servers entirely using a reliable open-source community mirror archive
+        wget -q "https://github.com" -O server.zip || { echo "Mirror download failed"; exit 1; }
         
-        echo "Downloading Minecraft Bedrock Server version $VERSION..."
-        
-        # Mimic a real desktop browser request to completely trick the download block
-        wget --header="User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
-             --header="Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8" \
-             --header="Accept-Language: en-US,en;q=0.5" \
-             --header="Connection: keep-alive" \
-             -q "$URL" -O server.zip || { echo "Download failed with direct link"; exit 1; }
-             
         unzip -q server.zip -d bedrock-server
         chmod +x bedrock-server/bedrock_server
 
@@ -41,19 +32,18 @@ jobs:
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
-        # Start the network tunnel in the background
+        # Safely execute the tunnel daemon in background
         if [ -z "$PLAYIT_SECRET" ]; then
           echo "===================================================="
-          echo "NO PLAYIT SECRET FOUND! LOOK BELOW FOR LINK:"
+          echo "NO SECRET DETECTED. CLAIM LINK GENERATING BELOW:"
           echo "===================================================="
           ./playit run &
         else
           ./playit run --secret "$PLAYIT_SECRET" &
         fi
         
-        # Give the network tunnel a few seconds to connect
+        # Keep background runner steady
         sleep 5
         
-        # Start the Minecraft server engine
         cd bedrock-server
         LD_LIBRARY_PATH=. ./bedrock_server
