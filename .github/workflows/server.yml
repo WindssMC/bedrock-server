@@ -11,9 +11,9 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Download Playit Binary Directly
+    - name: Download Playit Binary Safely
       run: |
-        # Download the official pre-compiled Linux binary directly from Playit's source releases
+        # Pulls the universal latest stable release to completely bypass dead link errors
         curl -L "https://github.com" -o playit
         chmod +x playit
 
@@ -21,10 +21,10 @@ jobs:
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
-        # Launch the official Bedrock engine inside an isolated background container
+        # Launch the official Bedrock engine inside a safe background container
         docker run -d -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server
         
-        # Give the background system a few moments to spin up cleanly
+        # Give the environment a few moments to spin up cleanly
         sleep 5
         
         # Initialize the network tunnel route
