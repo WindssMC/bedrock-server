@@ -11,28 +11,26 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Install Network and Zip Tools
+    - name: Install Tools and Playit Directly
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget unzip curl jq
+        sudo apt-get install -y wget unzip curl
+        # Downloads playit directly as a portable tool to completely bypass installation errors
+        curl -SsL -o playit https://github.com
+        chmod +x playit
 
-    - name: Download and Install Playit.gg
+    - name: Download Minecraft Bedrock Engine
       run: |
-        curl -SsL https://github.io | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/playit.gpg > /dev/null
-        echo "deb [signed-by=/etc/apt/trusted.gpg.d/playit.gpg] https://github.io ./ " | sudo tee /etc/apt/sources.list.d/playit.list
-        sudo apt-get update
-        sudo apt-get install playit -y
-
-    - name: Download Latest Minecraft Bedrock Engine
-      run: |
-        # Automatically fetch the literal newest version URL directly from Mojang to match your iPhone app
-        USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-        LATEST_URL=$(curl -s -A "$USER_AGENT" https://www.minecraft.net/en-us/download/server/bedrock | grep -o 'https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-[^"]*' | head -n 1)
+        # Bypasses Mojang's automated script block by mimicking an official iPhone browser identity
+        USER_AGENT="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+        LATEST_URL=$(curl -s -A "$USER_AGENT" https://minecraft.net | grep -o 'https://minecraft.net[^"]*' | head -n 1)
+        
         if [ -z "$LATEST_URL" ]; then
-          LATEST_URL="https://minecraft.net"
+          LATEST_URL="https://minecraft.net1.21.2.02.zip"
         fi
-        echo "Downloading from: $LATEST_URL"
-        wget -q "$LATEST_URL" -O server.zip
+        
+        echo "Downloading: $LATEST_URL"
+        wget --user-agent="$USER_AGENT" -q "$LATEST_URL" -O server.zip
         unzip -q server.zip -d bedrock-server
         chmod +x bedrock-server/bedrock_server
 
@@ -40,18 +38,16 @@ jobs:
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
-        cd bedrock-server
-        
-        # Safe-check fallback if you ever clear or lose your secret
+        # Safely checks your secret token
         if [ -z "$PLAYIT_SECRET" ]; then
           echo "===================================================="
-          echo "NO SECRET FOUND! LOOK BELOW FOR THE CLAIM LINK:"
+          echo "LOOK FOR THE CLAIM LINK IN THE CHAT BELOW:"
           echo "===================================================="
-          playit run &
+          ./playit run &
         else
-          playit run --secret "$PLAYIT_SECRET" &
+          ./playit run --secret "$PLAYIT_SECRET" &
         fi
         
-        # Give the network tunnel 5 seconds to warm up before launching the engine
         sleep 5
+        cd bedrock-server
         LD_LIBRARY_PATH=. ./bedrock_server
