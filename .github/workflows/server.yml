@@ -14,30 +14,44 @@ jobs:
     - name: Install Network and Zip Tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget unzip curl
+        sudo apt-get install -y wget unzip curl jq
 
     - name: Download and Install Playit.gg
       run: |
         curl -SsL https://github.io | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/playit.gpg > /dev/null
-        echo "deb [signed-by=/etc/apt/trusted.gpg.d/playit.gpg] https://github.io ./" | sudo tee /etc/apt/sources.list.d/playit-cloud.list
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/playit.gpg] https://github.io ./ " | sudo tee /etc/apt/sources.list.d/playit.list
         sudo apt-get update
         sudo apt-get install playit -y
 
-    - name: Update FreeDNS Domain Automatically
+    - name: Download Latest Minecraft Bedrock Engine
       run: |
-        curl -fsSL "https://afraid.org{{ secrets.FREEDNS_TOKEN }}/" || true
-
-    - name: Download Official Minecraft Engine
-      run: |
-        # Pull the absolute newest working file from Mojang's real data center link
-        wget "https://minecraft.azureedge.net/bin-linux/bedrock-server-1.21.0.03.zip" -O server.zip
-        unzip server.zip -d bedrock-server
+        # Automatically fetch the literal newest version URL directly from Mojang to match your iPhone app
+        USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        LATEST_URL=$(curl -s -A "$USER_AGENT" https://www.minecraft.net/en-us/download/server/bedrock | grep -o 'https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-[^"]*' | head -n 1)
+        if [ -z "$LATEST_URL" ]; then
+          LATEST_URL="https://minecraft.net"
+        fi
+        echo "Downloading from: $LATEST_URL"
+        wget -q "$LATEST_URL" -O server.zip
+        unzip -q server.zip -d bedrock-server
         chmod +x bedrock-server/bedrock_server
 
     - name: Start Tunnel and Server Together
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
-        playit --secret "$PLAYIT_SECRET" &
         cd bedrock-server
+        
+        # Safe-check fallback if you ever clear or lose your secret
+        if [ -z "$PLAYIT_SECRET" ]; then
+          echo "===================================================="
+          echo "NO SECRET FOUND! LOOK BELOW FOR THE CLAIM LINK:"
+          echo "===================================================="
+          playit run &
+        else
+          playit run --secret "$PLAYIT_SECRET" &
+        fi
+        
+        # Give the network tunnel 5 seconds to warm up before launching the engine
+        sleep 5
         LD_LIBRARY_PATH=. ./bedrock_server
