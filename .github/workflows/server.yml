@@ -17,15 +17,30 @@ jobs:
         # 1. Spin up the official Minecraft server engine safely in the background
         docker run -d --name mc_engine -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server:latest
         
-        # 2. Use the open-source web UI container built to instantly expose connection strings
-        docker run -d --name playit_tunnel --net=host wisdomsky/playit-docker-web:latest
-        
-        # 3. Give the background system 35 seconds to finish the internal package updates completely
-        sleep 35
+        # 2. Launch the official playit container with a simulated interactive interface flag
+        docker run -d -t --name playit_tunnel --net=host playitcloud/playit:latest run
         
         echo "================================================================="
-        echo "                     YOUR FLAWLESS SETUP LINK:                    "
+        echo "                WAITING FOR SETUP LINK TO GENERATE...             "
         echo "================================================================="
-        # Reaches inside the running container to pull out the exact login string directly
-        docker exec playit_tunnel playit claim-url || docker logs playit_tunnel | grep -o 'https://playit.gg[^ ]*' || docker logs playit_tunnel | tail -n 20
-        echo "================================================================="
+        
+        # 3. Aggressive loop that checks the internal terminal output every 2 seconds for your claim string
+        for i in {1..30}; do
+          LINK=$(docker logs playit_tunnel 2>&1 | grep -o 'https://playit.gg[^ ]*' | head -n 1)
+          if [ ! -z "$LINK" ]; then
+            echo ""
+            echo "SUCCESS! YOUR FLAWLESS SETUP LINK IS RIGHT HERE:"
+            echo "-----------------------------------------------------------------"
+            echo "$LINK"
+            echo "-----------------------------------------------------------------"
+            break
+          fi
+          echo -n "."
+          sleep 2
+        done
+        
+        # Safety fallback print if the loop hits a timing delay
+        if [ -z "$LINK" ]; then
+          echo "Full system diagnostics output:"
+          docker logs playit_tunnel
+        fi
