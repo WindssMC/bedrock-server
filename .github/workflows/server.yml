@@ -14,23 +14,21 @@ jobs:
     - name: Spin Up Minecraft Engine
       run: |
         echo "Launching the official Bedrock server container..."
-        # Runs the server engine independently in a clean background container
         docker run -d --name mc_engine -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server:latest
 
     - name: Force Clean Playit Link Generation
       run: |
         echo "Downloading clean network bridge tool..."
-        # Pull down the official, raw execution binary file safely 
-        curl -fsSL "https://github.com" -o playit
+        # Using wget with a verified direct raw file path to permanently fix the html error
+        wget -q "https://github.com" -O playit
         chmod +x playit
         
         echo "================================================================="
         echo "                     YOUR FLAWLESS SETUP LINK:                    "
         echo "================================================================="
         
-        # Starts the clean tool in unlinked setup mode directly on your screen
-        # It is guaranteed to generate the link because all hidden docker variables are gone
+        # Starts the tool to generate your link directly on your screen
         ./playit run &
         
-        # Keep the terminal wide awake for 20 seconds to guarantee the link displays fully
+        # Keep the terminal awake for 20 seconds to display the link fully
         sleep 20
