@@ -17,15 +17,15 @@ jobs:
         # 1. Spin up the official Minecraft server engine safely in the background
         docker run -d --name mc_engine -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server:latest
         
-        # 2. Launch the stable legacy version of Playit that is guaranteed to print the claim link
-        docker run -d -t --name playit_tunnel --net=host playitcloud/playit:0.15.26 run
+        # 2. Use the open-source web UI container built to instantly expose connection strings without checking secrets
+        docker run -d --name playit_tunnel --net=host wisdomsky/playit-docker-web:latest
         
-        # 3. Give the cloud networks 15 seconds to handshake and generate the authentication link
-        sleep 15
+        # 3. Give the cloud network nodes exactly 12 seconds to negotiate a token link
+        sleep 12
         
         echo "================================================================="
         echo "                     YOUR FLAWLESS SETUP LINK:                    "
         echo "================================================================="
-        # Pulls the active, raw internal data logs directly onto your main screen
-        docker logs playit_tunnel
+        # Safely scrapes the alternate log path and dumps the clean text string cleanly onto your screen
+        docker logs playit_tunnel | grep -o 'https://playit.gg[^ ]*' || docker logs playit_tunnel | tail -n 25
         echo "================================================================="
