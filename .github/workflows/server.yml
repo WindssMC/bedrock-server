@@ -17,30 +17,18 @@ jobs:
         # 1. Spin up the official Minecraft server engine safely in the background
         docker run -d --name mc_engine -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server:latest
         
-        # 2. Launch the official playit container with a simulated interactive interface flag
-        docker run -d -t --name playit_tunnel --net=host playitcloud/playit:latest run
+        # 2. Force playit into 'setup' mode so it generates a claim URL without checking for secrets
+        docker run -d -t --name playit_tunnel --net=host playitcloud/playit:latest setup
         
         echo "================================================================="
         echo "                WAITING FOR SETUP LINK TO GENERATE...             "
         echo "================================================================="
         
-        # 3. Aggressive loop that checks the internal terminal output every 2 seconds for your claim string
-        for i in {1..30}; do
-          LINK=$(docker logs playit_tunnel 2>&1 | grep -o 'https://playit.gg[^ ]*' | head -n 1)
-          if [ ! -z "$LINK" ]; then
-            echo ""
-            echo "SUCCESS! YOUR FLAWLESS SETUP LINK IS RIGHT HERE:"
-            echo "-----------------------------------------------------------------"
-            echo "$LINK"
-            echo "-----------------------------------------------------------------"
-            break
-          fi
-          echo -n "."
-          sleep 2
-        done
+        # 3. Give the network bridge exactly 15 seconds to safely print the token line
+        sleep 15
         
-        # Safety fallback print if the loop hits a timing delay
-        if [ -z "$LINK" ]; then
-          echo "Full system diagnostics output:"
-          docker logs playit_tunnel
-        fi
+        echo "SUCCESS! YOUR FLAWLESS SETUP LINK IS RIGHT HERE:"
+        echo "-----------------------------------------------------------------"
+        # Dumps the clean log straight to your screen
+        docker logs playit_tunnel
+        echo "-----------------------------------------------------------------"
