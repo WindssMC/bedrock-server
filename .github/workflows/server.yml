@@ -17,14 +17,14 @@ jobs:
         # 1. Spin up the official Minecraft server engine safely in the background
         docker run -d --name mc_engine -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server:latest
         
-        # 2. Feed it a mock secret key format to instantly fool the validation check and force a reset
-        docker run -d -t --name playit_tunnel --net=host -e SECRET_KEY="123456789012345678901234567890123456" playitcloud/playit:latest run
+        # 2. Tell playit to use a brand new configuration file path, forcing it to generate a fresh setup link
+        docker run -d -t --name playit_tunnel --net=host playitcloud/playit:latest run --config /tmp/playit.toml
         
         echo "================================================================="
         echo "                WAITING FOR SETUP LINK TO GENERATE...             "
         echo "================================================================="
         
-        # 3. Give the network tunnel 15 seconds to realize the key is unassigned and generate the link
+        # 3. Give the network tunnel 15 seconds to safely print the clean token line
         sleep 15
         
         echo "SUCCESS! YOUR FLAWLESS SETUP LINK IS RIGHT HERE:"
