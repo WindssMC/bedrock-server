@@ -11,28 +11,30 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Download Playit Manually
+    - name: Install Playit Cleanly
       run: |
-        # Pulls the correct raw linux binary file from GitHub releases
-        curl -fsSL https://github.com -o playit
-        chmod +x playit
+        # Installs playit via the official linux install script to completely avoid html page errors
+        curl -SsL https://github.io | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/playit.gpg > /dev/null
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/playit.gpg] https://github.io ./ " | sudo tee /etc/apt/sources.list.d/playit.list
+        sudo apt-get update
+        sudo apt-get install playit -y
 
     - name: Start Tunnel and Docker Minecraft Server
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
+        # Pull and launch the stable Bedrock Server container in the background (-d flag fixes the TTY error)
+        docker run -d -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server
+        
+        # Give Docker 5 seconds to wake up
+        sleep 5
+        
         # Start the network tunnel
         if [ -z "$PLAYIT_SECRET" ]; then
           echo "===================================================="
           echo "NO PLAYIT SECRET FOUND! LOOK BELOW FOR LINK:"
           echo "===================================================="
-          ./playit run &
+          playit run
         else
-          ./playit run --secret "$PLAYIT_SECRET" &
+          playit run --secret "$PLAYIT_SECRET"
         fi
-        
-        # Give the network tunnel 5 seconds to initiate
-        sleep 5
-        
-        # Pull and launch an ultra-stable, isolated Bedrock Server via Docker container
-        docker run -it -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server
