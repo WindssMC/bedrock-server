@@ -11,33 +11,27 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
+    - name: Set Up Node.js Environment
+      uses: actions/setup-node@v4
+      with:
+        node-node-version: '20'
+
     - name: Install Tools and Playit Directly
       run: |
         sudo apt-get update
-        # Installs libnsl to fix the exit code 9 engine crash
-        sudo apt-get install -y wget unzip curl libnsl2
+        sudo apt-get install -y wget curl
+        # Install the bedrock server tool globally via npm
+        sudo npm install -g bds-core --unsafe-perm
+        
+        # Pull portable playit agent binary directly
         curl -SsL -o playit https://github.com
         chmod +x playit
-
-    - name: Download Minecraft Bedrock Engine via GitHub Mirror
-      run: |
-        echo "Pulling verified stable Bedrock Engine..."
-        wget -q "https://github.com" -O server.zip
-        unzip -q server.zip -d bedrock-server
-        chmod +x bedrock-server/bedrock_server
-
-    - name: Configure Server Settings
-      run: |
-        cd bedrock-server
-        # Force-enables the required eula setting so the engine can boot safely
-        echo "eula=true" > eula.txt
-        # Optional: Optimizes the tick rate for smooth performance on mobile connections
-        sed -i 's/max-threads=8/max-threads=4/g' server.properties
 
     - name: Start Tunnel and Server Together
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
+        # Safely execute the tunnel daemon in background
         if [ -z "$PLAYIT_SECRET" ]; then
           echo "===================================================="
           echo "NO SECRET DETECTED. CLAIM LINK GENERATING BELOW:"
@@ -47,6 +41,8 @@ jobs:
           ./playit run --secret "$PLAYIT_SECRET" &
         fi
         
+        # Keep background runner steady
         sleep 5
-        cd bedrock-server
-        LD_LIBRARY_PATH=. ./bedrock_server
+        
+        # Launch the Bedrock server using bds-core engine launcher
+        bds-core --eula true --version latest
