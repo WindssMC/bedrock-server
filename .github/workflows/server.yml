@@ -11,24 +11,21 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Spin Up Minecraft Engine
+    - name: Launch Flawless Simulation
       run: |
-        echo "Launching the official Bedrock server container..."
+        echo "Launching official isolated server engines..."
+        # 1. Spin up the official Minecraft server engine safely in the background
         docker run -d --name mc_engine -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server:latest
-
-    - name: Force Clean Playit Link Generation
-      run: |
-        echo "Downloading clean network bridge tool..."
-        # Using wget with a verified direct raw file path to permanently fix the html error
-        wget -q "https://github.com" -O playit
-        chmod +x playit
+        
+        # 2. Spin up Playit via Docker (-t forces it to output plain text instead of hiding the link)
+        docker run -d -t --name playit_tunnel --net=host playitcloud/playit:latest run
+        
+        # 3. Give the cloud networks 15 seconds to handshake and generate the authentication link
+        sleep 15
         
         echo "================================================================="
         echo "                     YOUR FLAWLESS SETUP LINK:                    "
         echo "================================================================="
-        
-        # Starts the tool to generate your link directly on your screen
-        ./playit run &
-        
-        # Keep the terminal awake for 20 seconds to display the link fully
-        sleep 20
+        # Forces the hidden container logs directly onto your main GitHub action screen
+        docker logs playit_tunnel
+        echo "================================================================="
