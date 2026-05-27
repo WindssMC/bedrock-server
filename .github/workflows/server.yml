@@ -11,30 +11,28 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Install Playit Cleanly
+    - name: Download Playit Binary Directly
       run: |
-        # Installs playit via the official linux install script to completely avoid html page errors
-        curl -SsL https://github.io | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/playit.gpg > /dev/null
-        echo "deb [signed-by=/etc/apt/trusted.gpg.d/playit.gpg] https://github.io ./ " | sudo tee /etc/apt/sources.list.d/playit.list
-        sudo apt-get update
-        sudo apt-get install playit -y
+        # Download the official pre-compiled Linux binary directly from Playit's source releases
+        curl -L "https://github.com" -o playit
+        chmod +x playit
 
-    - name: Start Tunnel and Docker Minecraft Server
+    - name: Start Docker Server and Tunnel
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
-        # Pull and launch the stable Bedrock Server container in the background (-d flag fixes the TTY error)
+        # Launch the official Bedrock engine inside an isolated background container
         docker run -d -e EULA=TRUE -p 19132:19132/udp itzg/minecraft-bedrock-server
         
-        # Give Docker 5 seconds to wake up
+        # Give the background system a few moments to spin up cleanly
         sleep 5
         
-        # Start the network tunnel
+        # Initialize the network tunnel route
         if [ -z "$PLAYIT_SECRET" ]; then
           echo "===================================================="
-          echo "NO PLAYIT SECRET FOUND! LOOK BELOW FOR LINK:"
+          echo "NO PLAYIT SECRET DETECTED. CHOOSE THE LINK BELOW:"
           echo "===================================================="
-          playit run
+          ./playit run
         else
-          playit run --secret "$PLAYIT_SECRET"
+          ./playit run --secret "$PLAYIT_SECRET"
         fi
