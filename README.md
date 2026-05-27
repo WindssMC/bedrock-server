@@ -1,0 +1,2 @@
+# bedrock-server
+My server
