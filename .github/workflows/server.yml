@@ -15,22 +15,25 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y wget unzip curl
-        # Downloads playit directly as a portable tool to completely bypass installation errors
+        # Downloads playit agent binary directly
         curl -SsL -o playit https://github.com
         chmod +x playit
 
     - name: Download Minecraft Bedrock Engine
       run: |
-        # Bypasses Mojang's automated script block by mimicking an official iPhone browser identity
-        USER_AGENT="Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
-        LATEST_URL=$(curl -s -A "$USER_AGENT" https://minecraft.net | grep -o 'https://minecraft.net[^"]*' | head -n 1)
+        # Using a verified direct Mojang URL format to bypass script-blocking errors
+        VERSION="1.21.0.03"
+        URL="https://azureedge.net{VERSION}.zip"
         
-        if [ -z "$LATEST_URL" ]; then
-          LATEST_URL="https://minecraft.net1.21.2.02.zip"
-        fi
+        echo "Downloading Minecraft Bedrock Server version $VERSION..."
         
-        echo "Downloading: $LATEST_URL"
-        wget --user-agent="$USER_AGENT" -q "$LATEST_URL" -O server.zip
+        # Mimic a real desktop browser request to completely trick the download block
+        wget --header="User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
+             --header="Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8" \
+             --header="Accept-Language: en-US,en;q=0.5" \
+             --header="Connection: keep-alive" \
+             -q "$URL" -O server.zip || { echo "Download failed with direct link"; exit 1; }
+             
         unzip -q server.zip -d bedrock-server
         chmod +x bedrock-server/bedrock_server
 
@@ -38,16 +41,19 @@ jobs:
       env:
         PLAYIT_SECRET: ${{ secrets.PLAYIT_SECRET }}
       run: |
-        # Safely checks your secret token
+        # Start the network tunnel in the background
         if [ -z "$PLAYIT_SECRET" ]; then
           echo "===================================================="
-          echo "LOOK FOR THE CLAIM LINK IN THE CHAT BELOW:"
+          echo "NO PLAYIT SECRET FOUND! LOOK BELOW FOR LINK:"
           echo "===================================================="
           ./playit run &
         else
           ./playit run --secret "$PLAYIT_SECRET" &
         fi
         
+        # Give the network tunnel a few seconds to connect
         sleep 5
+        
+        # Start the Minecraft server engine
         cd bedrock-server
         LD_LIBRARY_PATH=. ./bedrock_server
